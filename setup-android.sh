@@ -31,26 +31,18 @@ for line in perms:
 open(p, "w", encoding="utf-8").write(s)
 PY
 
-# --- launcher icon (PNG, replaces the default adaptive icon) --------------
-python3 - <<'PY'
-import os, shutil
-try:
-    from PIL import Image
-except Exception:
-    import subprocess, sys
-    subprocess.call([sys.executable, "-m", "pip", "install", "--quiet", "pillow"])
-    from PIL import Image
-res = "android/app/src/main/res"
-src = Image.open("www/assets/icon.png").convert("RGBA")
-sizes = {"mdpi":48,"hdpi":72,"xhdpi":96,"xxhdpi":144,"xxxhdpi":192}
-for d, px in sizes.items():
-    folder = os.path.join(res, "mipmap-" + d)
-    os.makedirs(folder, exist_ok=True)
-    im = src.resize((px, px), Image.LANCZOS)
-    for n in ("ic_launcher.png", "ic_launcher_round.png", "ic_launcher_foreground.png"):
-        im.save(os.path.join(folder, n))
-shutil.rmtree(os.path.join(res, "mipmap-anydpi-v26"), ignore_errors=True)
-PY
+# --- launcher icon (optional, never fails the build) ---------------------
+RES=android/app/src/main/res
+if command -v convert >/dev/null 2>&1; then
+  for e in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do
+    d=${e%%:*}; px=${e##*:}
+    mkdir -p "$RES/mipmap-$d"
+    for n in ic_launcher ic_launcher_round ic_launcher_foreground; do
+      convert www/assets/icon.png -resize ${px}x${px} "$RES/mipmap-$d/$n.png" || true
+    done
+  done
+  rm -rf "$RES/mipmap-anydpi-v26"
+fi
 
 npx cap sync android
 echo "Android project ready in ./android"
